@@ -2,6 +2,19 @@
 
 COOKIE_NAME = "access_token_web"
 DEFAULT_BASE_URL = "https://www.vinted.be"
+
+# European markets selectable for multi-market search (code -> base URL).
+MARKETS = {
+    "be": "https://www.vinted.be",
+    "nl": "https://www.vinted.nl",
+    "fr": "https://www.vinted.fr",
+    "de": "https://www.vinted.de",
+    "it": "https://www.vinted.it",
+    "es": "https://www.vinted.es",
+    "at": "https://www.vinted.at",
+    "pt": "https://www.vinted.pt",
+}
+DEFAULT_MARKET = "be"
 DEFAULT_PER_PAGE = 96
 BRANDS_ENDPOINT = "/api/v2/brands"
 

@@ -16,6 +16,8 @@ const els = {
   priceMax: document.getElementById("price-max"),
   conditionSelect: document.getElementById("condition-select"),
   orderSelect: document.getElementById("order-select"),
+  marketsAll: document.getElementById("markets-all"),
+  marketChecks: Array.from(document.querySelectorAll(".market-check[value]")),
   searchBtn: document.getElementById("search-btn"),
   itemsGrid: document.getElementById("items-grid"),
   status: document.getElementById("status"),
@@ -96,6 +98,13 @@ function updateExport() {
   els.exportBtn.disabled = n === 0;
 }
 
+function getSelectedMarkets() {
+  return els.marketChecks
+    .filter((c) => c.checked)
+    .map((c) => c.value)
+    .join(",");
+}
+
 function buildParams() {
   const params = new URLSearchParams();
   if (els.searchInput.value) params.set("q", els.searchInput.value);
@@ -104,6 +113,8 @@ function buildParams() {
   if (els.priceMax.value) params.set("price_max", els.priceMax.value);
   if (els.conditionSelect.value)
     params.set("condition", els.conditionSelect.value);
+  const markets = getSelectedMarkets();
+  if (markets) params.set("markets", markets);
   params.set("order", els.orderSelect.value);
   params.set("per_page", String(PER_PAGE));
   return params;
@@ -119,9 +130,10 @@ async function search() {
   try {
     const res = await fetch("/api/search?" + params.toString());
     if (!res.ok) throw new Error(`search failed (${res.status})`);
-    state.items = await res.json();
+    const data = await res.json();
+    state.items = data.items;
     state.page = 1;
-    state.hasMore = state.items.length === PER_PAGE;
+    state.hasMore = data.has_more;
     state.selected.clear();
     renderCards();
     updateExport();
@@ -138,10 +150,10 @@ async function loadMore() {
   try {
     const res = await fetch("/api/search?" + params.toString());
     if (!res.ok) throw new Error(`search failed (${res.status})`);
-    const more = await res.json();
-    state.items = state.items.concat(more);
+    const data = await res.json();
+    state.items = state.items.concat(data.items);
     state.page += 1;
-    state.hasMore = more.length === PER_PAGE;
+    state.hasMore = data.has_more;
     renderCards();
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
@@ -206,6 +218,9 @@ async function saveCookie() {
 els.searchBtn.addEventListener("click", search);
 els.searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") search();
+});
+els.marketsAll.addEventListener("change", () => {
+  els.marketChecks.forEach((c) => (c.checked = els.marketsAll.checked));
 });
 els.loadMoreBtn.addEventListener("click", loadMore);
 els.exportBtn.addEventListener("click", exportPdf);

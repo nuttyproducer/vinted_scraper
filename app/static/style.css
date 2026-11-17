@@ -165,6 +165,32 @@ body {
   display: none;
 }
 
+.market-group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0 0;
+}
+
+.market-group legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.market-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: normal;
+  margin: 2px 0;
+}
+
+.market-option input {
+  width: auto;
+}
+
 .export-bar {
   position: sticky;
   bottom: 0;
