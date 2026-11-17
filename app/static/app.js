@@ -1,6 +1,7 @@
 "use strict";
 
 const PER_PAGE = 96;
+const BATCH_SIZE = 4; // pages fetched per auto-load / "load more"
 
 const state = {
   items: [], // all loaded item DTOs from the current search
@@ -161,21 +162,49 @@ function showCookieModal() {
   els.cookieModal.hidden = false;
 }
 
+async function fetchPage(params, page) {
+  const pr = new URLSearchParams(params);
+  pr.set("page", String(page));
+  const res = await fetch("/api/search?" + pr.toString());
+  if (!res.ok) throw new Error(`search failed (${res.status})`);
+  return res.json();
+}
+
+async function loadNextPages(params, count) {
+  const start = state.page + 1;
+  const pageNumbers = [];
+  for (let i = 0; i < count; i++) pageNumbers.push(start + i);
+  const results = await Promise.all(
+    pageNumbers.map((p) =>
+      fetchPage(params, p).catch(() => ({ items: [], has_more: false }))
+    )
+  );
+  for (const data of results) {
+    state.items = state.items.concat(data.items);
+  }
+  state.page += results.length;
+  const last = results[results.length - 1];
+  state.hasMore = last ? last.has_more : false;
+  updateBrandOptions();
+  renderCards();
+  updateExport();
+}
+
 async function search() {
   const params = buildParams();
-  params.set("page", "1");
   try {
-    const res = await fetch("/api/search?" + params.toString());
-    if (!res.ok) throw new Error(`search failed (${res.status})`);
-    const data = await res.json();
-    state.items = data.items;
+    const first = await fetchPage(params, 1);
+    state.items = first.items;
     state.page = 1;
-    state.hasMore = data.has_more;
+    state.hasMore = first.has_more;
     state.brandFilter = "";
     state.selected.clear();
     updateBrandOptions();
     renderCards(true);
     updateExport();
+    if (state.hasMore) {
+      await loadNextPages(params, BATCH_SIZE);
+    }
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
     showCookieModal();
@@ -184,17 +213,9 @@ async function search() {
 
 async function loadMore() {
   const params = buildParams();
-  params.set("page", String(state.page + 1));
   els.loadMoreBtn.disabled = true;
   try {
-    const res = await fetch("/api/search?" + params.toString());
-    if (!res.ok) throw new Error(`search failed (${res.status})`);
-    const data = await res.json();
-    state.items = state.items.concat(data.items);
-    state.page += 1;
-    state.hasMore = data.has_more;
-    updateBrandOptions();
-    renderCards();
+    await loadNextPages(params, BATCH_SIZE);
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
   } finally {
