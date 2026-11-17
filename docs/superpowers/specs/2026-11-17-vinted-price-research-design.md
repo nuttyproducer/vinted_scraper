@@ -146,8 +146,8 @@ FastAPI routes:
 - `GET /api/search?q=&brand=&price_min=&price_max=&condition=&sort=` — returns a
   JSON list of `ItemDTO`.
 - `GET /api/brands` — returns the brand list for the dropdown.
-- `POST /api/export` (body: selected item IDs) — enriches, downloads photos, and
-  returns the PDF bytes.
+- `POST /api/export` (body: the selected items as full JSON) — enriches each,
+  downloads photos, and returns the PDF bytes.
 - `POST /api/session` (body: cookie) — saves the pasted cookie and clears any
   cached anonymous session.
 
@@ -162,8 +162,8 @@ cookie-paste modal containing the step-by-step guide for copying
 
 - **Search:** UI → `GET /api/search` → `VintedClient.search()` → normalised
   `ItemDTO` list → cards render.
-- **Export:** UI → `POST /api/export` (selected IDs) → per item: `enrich()`
-  (description) + download photo bytes + compute age → `build_pdf()` → PDF bytes
+- **Export:** UI → `POST /api/export` (the selected items as JSON) → per item:
+  `enrich()` (description) + download photo bytes → `build_pdf()` → PDF bytes
   stream back to the browser.
 - **Blocked:** any 403/401/captcha → UI banner "Vinted is blocking us — paste
   your cookie" → user pastes → saved via `session_store` → retry.
