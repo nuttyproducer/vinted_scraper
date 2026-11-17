@@ -1,7 +1,12 @@
+import base64
 import unittest
 
 from models import ItemDTO
-from pdf import build_pdf, _summary_rows
+from pdf import build_pdf, _prepare_photo, _summary_rows
+
+PNG_1x1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+)
 
 
 class TestSummaryRows(unittest.TestCase):
@@ -21,3 +26,22 @@ class TestBuildPdf(unittest.TestCase):
         out = build_pdf([ItemDTO(id=1, title="A", price=5.0)], photos={})
         self.assertTrue(out.startswith(b"%PDF"))
         self.assertGreater(len(out), 100)
+
+    def test_returns_pdf_bytes_with_photo(self):
+        out = build_pdf(
+            [ItemDTO(id=1, title="A", price=5.0)],
+            photos={1: PNG_1x1},
+        )
+        self.assertTrue(out.startswith(b"%PDF"))
+        self.assertGreater(len(out), 100)
+
+    def test_prepare_photo_converts_to_jpeg(self):
+        out = _prepare_photo(PNG_1x1)
+        self.assertTrue(out.startswith(b"\xff\xd8"))
+
+    def test_build_pdf_survives_bad_photo(self):
+        out = build_pdf(
+            [ItemDTO(id=1, title="A", price=5.0)],
+            photos={1: b"<html>not an image</html>"},
+        )
+        self.assertTrue(out.startswith(b"%PDF"))

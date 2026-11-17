@@ -70,6 +70,13 @@ class TestSearch(unittest.TestCase):
         out = VintedClient(scraper=scraper).search(query="x")
         self.assertIsNone(out[0].listed_days_ago)
 
+    def test_unknown_condition_ignored(self):
+        scraper = MagicMock()
+        scraper.search.return_value = []
+        VintedClient(scraper=scraper).search(condition="bogus")
+        params = scraper.search.call_args.kwargs["params"]
+        self.assertNotIn("attribute_ids[status]", params)
+
 
 class TestGetBrands(unittest.TestCase):
     def test_maps_brands(self):
@@ -113,4 +120,9 @@ class TestDownloadPhoto(unittest.TestCase):
     @patch("vinted_client.httpx.get")
     def test_returns_none_on_error(self, get):
         get.side_effect = httpx.HTTPError("boom")
+        self.assertIsNone(download_photo("https://x/i.jpg"))
+
+    @patch("vinted_client.httpx.get")
+    def test_returns_none_on_non_200(self, get):
+        get.return_value.raise_for_status.side_effect = httpx.HTTPError("403")
         self.assertIsNone(download_photo("https://x/i.jpg"))

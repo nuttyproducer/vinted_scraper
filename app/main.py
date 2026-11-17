@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from constants import ORDER_RELEVANCE
@@ -17,8 +18,17 @@ from vinted_client import VintedClient, download_photo
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Vinted Price Research")
-_client = VintedClient()
 _store = SessionStore()
+_client: VintedClient | None = None
+
+
+def _ensure_client() -> VintedClient:
+    """Build the Vinted client lazily, reusing a stored cookie when present."""
+    global _client
+    if _client is None:
+        cookie = _store.load()
+        _client = VintedClient(cookie=cookie) if cookie else VintedClient()
+    return _client
 
 
 class ExportPayload(BaseModel):
@@ -49,7 +59,7 @@ def search(
             brand_id = int(brand)
         except ValueError:
             brand_id = None
-    items = _client.search(
+    items = _ensure_client().search(
         query=q,
         brand_id=brand_id,
         price_min=price_min,
@@ -62,7 +72,7 @@ def search(
 
 @app.get("/api/brands")
 def brands():
-    return [asdict(b) for b in _client.get_brands()]
+    return [asdict(b) for b in _ensure_client().get_brands()]
 
 
 @app.post("/api/session")
@@ -80,9 +90,10 @@ def save_session(payload: SessionPayload):
 def export(payload: ExportPayload):
     items = [ItemDTO(**d) for d in payload.items]
     photos: dict[int, bytes] = {}
+    client = _ensure_client()
     for item in items:
         try:
-            _client.enrich_item(item)
+            client.enrich_item(item)
         except Exception:
             pass
         if item.photo_url:
@@ -92,3 +103,6 @@ def export(payload: ExportPayload):
         time.sleep(0.2)
     pdf_bytes = build_pdf(items, photos)
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

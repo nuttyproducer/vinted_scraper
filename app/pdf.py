@@ -2,11 +2,11 @@
 
 import io
 
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image,
     Paragraph,
@@ -43,6 +43,20 @@ def _summary_rows(items: list[ItemDTO]) -> list[list[str]]:
     return [header] + rows
 
 
+_MAX_PHOTO_DIM = 800
+_PHOTO_QUALITY = 85
+
+
+def _prepare_photo(photo: bytes) -> bytes:
+    """Re-encode an image as a bounded-size JPEG to keep the PDF small."""
+    img = PILImage.open(io.BytesIO(photo))
+    img = img.convert("RGB")
+    img.thumbnail((_MAX_PHOTO_DIM, _MAX_PHOTO_DIM))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=_PHOTO_QUALITY)
+    return buf.getvalue()
+
+
 def build_pdf(items: list[ItemDTO], photos: dict[int, bytes]) -> bytes:
     """Render a summary table and one card per item into PDF bytes."""
     buf = io.BytesIO()
@@ -73,9 +87,16 @@ def build_pdf(items: list[ItemDTO], photos: dict[int, bytes]) -> bytes:
 
         photo = photos.get(item.id)
         if photo:
-            story.append(
-                Image(ImageReader(io.BytesIO(photo)), width=80 * mm, height=80 * mm)
-            )
+            try:
+                story.append(
+                    Image(
+                        io.BytesIO(_prepare_photo(photo)),
+                        width=80 * mm,
+                        height=80 * mm,
+                    )
+                )
+            except Exception:
+                story.append(Paragraph("(no image)", styles["Italic"]))
         else:
             story.append(Paragraph("(no image)", styles["Italic"]))
 

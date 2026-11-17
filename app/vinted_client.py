@@ -21,7 +21,9 @@ from models import BrandDTO, ItemDTO
 def download_photo(url: str) -> bytes | None:
     """Download image bytes, returning ``None`` on any failure."""
     try:
-        return httpx.get(url, timeout=10.0).content
+        resp = httpx.get(url, timeout=10.0)
+        resp.raise_for_status()
+        return resp.content
     except httpx.HTTPError:
         return None
 
@@ -65,7 +67,9 @@ class VintedClient:
         if price_max is not None:
             params["price_to"] = price_max
         if condition is not None:
-            params["attribute_ids[status]"] = str(CONDITION_IDS[condition])
+            status_id = CONDITION_IDS.get(condition)
+            if status_id is not None:
+                params["attribute_ids[status]"] = str(status_id)
 
         now = time.time()
         return [self._to_dto(item, now) for item in self._scraper.search(params=params)]

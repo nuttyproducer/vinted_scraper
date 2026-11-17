@@ -13,6 +13,12 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("Vinted Price Research", r.text)
 
+    def test_static_assets_served(self):
+        client = TestClient(main.app)
+        for path in ("/static/style.css", "/static/app.js"):
+            r = client.get(path)
+            self.assertEqual(r.status_code, 200, path)
+
     def test_search_route(self):
         with patch.object(main, "_client") as m:
             m.search.return_value = [ItemDTO(id=1, title="A", price=5.0)]
@@ -57,3 +63,21 @@ class TestFrontendContract(unittest.TestCase):
             "#cookie-save",
         ]:
             self.assertIn(f'id="{elem[1:]}"', r.text)
+
+
+class TestEnsureClient(unittest.TestCase):
+    def test_uses_stored_cookie(self):
+        with patch.object(main, "_client", None), patch.object(
+            main, "_store"
+        ) as store, patch.object(main, "VintedClient") as vc:
+            store.load.return_value = "abc123"
+            main._ensure_client()
+            vc.assert_called_once_with(cookie="abc123")
+
+    def test_anonymous_when_no_cookie(self):
+        with patch.object(main, "_client", None), patch.object(
+            main, "_store"
+        ) as store, patch.object(main, "VintedClient") as vc:
+            store.load.return_value = None
+            main._ensure_client()
+            vc.assert_called_once_with()
