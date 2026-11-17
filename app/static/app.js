@@ -2,6 +2,7 @@
 
 const PER_PAGE = 96;
 const BATCH_SIZE = 4; // pages fetched per auto-load / "load more"
+const STORAGE_KEY = "vinted-price-research";
 
 const state = {
   items: [], // all loaded item DTOs from the current search
@@ -103,6 +104,7 @@ function renderCards(reset) {
   state.renderedCount = state.items.length;
   els.status.textContent = `${getVisibleItems().length} results`;
   els.loadMoreBtn.hidden = !state.hasMore;
+  saveState();
 }
 
 function updateBrandOptions() {
@@ -135,6 +137,61 @@ function updateExport() {
   const n = state.selected.size;
   els.exportBtn.textContent = `Export ${n} selected → PDF`;
   els.exportBtn.disabled = n === 0;
+  saveState();
+}
+
+function saveState() {
+  try {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        items: state.items,
+        selected: Array.from(state.selected),
+        page: state.page,
+        hasMore: state.hasMore,
+        brandFilter: state.brandFilter,
+        filters: {
+          q: els.searchInput.value,
+          priceMin: els.priceMin.value,
+          priceMax: els.priceMax.value,
+          condition: els.conditionSelect.value,
+          order: els.orderSelect.value,
+          markets: els.marketChecks
+            .filter((c) => c.checked)
+            .map((c) => c.value),
+        },
+      })
+    );
+  } catch (e) {
+    // sessionStorage unavailable or full — ignore
+  }
+}
+
+function loadState() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.items = Array.isArray(data.items) ? data.items : [];
+    state.selected = new Set(data.selected || []);
+    state.page = data.page || 1;
+    state.hasMore = !!data.hasMore;
+    state.brandFilter = data.brandFilter || "";
+    const f = data.filters || {};
+    els.searchInput.value = f.q || "";
+    els.priceMin.value = f.priceMin || "";
+    els.priceMax.value = f.priceMax || "";
+    els.conditionSelect.value = f.condition || "";
+    els.orderSelect.value = f.order || "relevance";
+    const markets = new Set(f.markets || []);
+    els.marketChecks.forEach((c) => {
+      c.checked = markets.has(c.value);
+    });
+    els.marketsAll.checked = els.marketChecks.every((c) => c.checked);
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function getSelectedMarkets() {
@@ -284,4 +341,10 @@ els.cookieClose.addEventListener("click", () => {
   els.cookieModal.hidden = true;
 });
 
-updateExport();
+if (loadState()) {
+  updateBrandOptions();
+  renderCards(true);
+  updateExport();
+} else {
+  updateExport();
+}
