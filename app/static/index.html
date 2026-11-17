@@ -4,8 +4,78 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vinted Price Research</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <p>Loading…</p>
+  <header class="topbar">
+    <h1 class="logo">Vinted Price Research</h1>
+  </header>
+
+  <main class="layout">
+    <aside class="filters">
+      <label for="search-input">Search</label>
+      <input id="search-input" type="text" placeholder="Search items…" autocomplete="off">
+
+      <label for="brand-select">Brand</label>
+      <select id="brand-select">
+        <option value="">All brands</option>
+      </select>
+
+      <label for="price-min">Price min</label>
+      <input id="price-min" type="number" min="0" step="0.01" placeholder="0">
+
+      <label for="price-max">Price max</label>
+      <input id="price-max" type="number" min="0" step="0.01" placeholder="any">
+
+      <label for="condition-select">Condition</label>
+      <select id="condition-select">
+        <option value="">Any</option>
+        <option value="new_with_tags">New with tags</option>
+        <option value="new_without_tags">New without tags</option>
+        <option value="very_good">Very good</option>
+        <option value="good">Good</option>
+        <option value="satisfactory">Satisfactory</option>
+      </select>
+
+      <label for="order-select">Sort</label>
+      <select id="order-select">
+        <option value="relevance">Relevance</option>
+        <option value="price_low_to_high">Price: low to high</option>
+        <option value="price_high_to_low">Price: high to low</option>
+        <option value="newest_first">Newest first</option>
+      </select>
+
+      <button id="search-btn" type="button">Search</button>
+    </aside>
+
+    <section class="results">
+      <div id="items-grid" class="items-grid"></div>
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+
+  <div id="export-bar" class="export-bar">
+    <button id="export-btn" type="button" disabled>Export 0 selected → PDF</button>
+  </div>
+
+  <div id="cookie-modal" class="modal" hidden>
+    <div class="modal-card">
+      <h2>Vinted is blocking us</h2>
+      <p>Paste your <code>access_token_web</code> cookie to continue.</p>
+      <ol class="cookie-help">
+        <li>Open vinted.com in your browser and log in.</li>
+        <li>Open DevTools (F12) → Application → Cookies → https://www.vinted.com.</li>
+        <li>Copy the value of the <code>access_token_web</code> cookie.</li>
+        <li>Paste it below and save.</li>
+      </ol>
+      <input id="cookie-input" type="text" placeholder="paste cookie here">
+      <div class="modal-actions">
+        <button id="cookie-save" type="button">Save cookie</button>
+        <button id="cookie-close" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>

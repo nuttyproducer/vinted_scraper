@@ -38,3 +38,22 @@ class TestRoutes(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.headers["content-type"], "application/pdf")
+
+
+class TestFrontendContract(unittest.TestCase):
+    def test_index_has_contract_ids(self):
+        r = TestClient(main.app).get("/")
+        for elem in [
+            "#search-input",
+            "#brand-select",
+            "#price-min",
+            "#price-max",
+            "#condition-select",
+            "#order-select",
+            "#items-grid",
+            "#export-btn",
+            "#cookie-modal",
+            "#cookie-input",
+            "#cookie-save",
+        ]:
+            self.assertIn(f'id="{elem[1:]}"', r.text)
