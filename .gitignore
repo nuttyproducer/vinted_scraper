@@ -22,6 +22,9 @@ target-alpine/
 idea/
 vscode/
 
+# Superpowers scratch (ledger, briefs, review packages)
+.superpowers/
+
 # macOS system files
 DS_Store
 
