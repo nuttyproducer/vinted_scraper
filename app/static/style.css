@@ -145,6 +145,26 @@ body {
   color: var(--muted);
 }
 
+.load-more {
+  display: block;
+  margin: 16px auto;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.load-more:hover {
+  background: var(--panel);
+}
+
+.load-more[hidden] {
+  display: none;
+}
+
 .export-bar {
   position: sticky;
   bottom: 0;

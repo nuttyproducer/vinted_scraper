@@ -72,7 +72,7 @@ class TestEnsureClient(unittest.TestCase):
         ) as store, patch.object(main, "VintedClient") as vc:
             store.load.return_value = "abc123"
             main._ensure_client()
-            vc.assert_called_once_with(cookie="abc123")
+            vc.assert_called_once_with(baseurl=main.BASE_URL, cookie="abc123")
 
     def test_anonymous_when_no_cookie(self):
         with patch.object(main, "_client", None), patch.object(
@@ -80,4 +80,4 @@ class TestEnsureClient(unittest.TestCase):
         ) as store, patch.object(main, "VintedClient") as vc:
             store.load.return_value = None
             main._ensure_client()
-            vc.assert_called_once_with()
+            vc.assert_called_once_with(baseurl=main.BASE_URL)

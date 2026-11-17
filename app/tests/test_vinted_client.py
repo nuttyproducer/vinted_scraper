@@ -43,6 +43,8 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(params["price_to"], 10.0)
         self.assertEqual(params["attribute_ids[status]"], "6")
         self.assertEqual(params["order"], "price_low_to_high")
+        self.assertEqual(params["page"], 1)
+        self.assertEqual(params["per_page"], 96)
         dto = out[0]
         self.assertEqual(dto.brand, "LEGO")
         self.assertEqual(dto.size, "M")
@@ -76,6 +78,12 @@ class TestSearch(unittest.TestCase):
         VintedClient(scraper=scraper).search(condition="bogus")
         params = scraper.search.call_args.kwargs["params"]
         self.assertNotIn("attribute_ids[status]", params)
+
+    def test_page_param(self):
+        scraper = MagicMock()
+        scraper.search.return_value = []
+        VintedClient(scraper=scraper).search(query="x", page=3)
+        self.assertEqual(scraper.search.call_args.kwargs["params"]["page"], 3)
 
 
 class TestGetBrands(unittest.TestCase):

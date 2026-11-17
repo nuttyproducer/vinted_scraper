@@ -1,8 +1,12 @@
 "use strict";
 
+const PER_PAGE = 96;
+
 const state = {
-  items: [], // full item DTOs from the last search
+  items: [], // full item DTOs from the current search
   selected: new Set(), // selected item ids
+  page: 1,
+  hasMore: false,
 };
 
 const els = {
@@ -16,6 +20,7 @@ const els = {
   itemsGrid: document.getElementById("items-grid"),
   status: document.getElementById("status"),
   exportBtn: document.getElementById("export-btn"),
+  loadMoreBtn: document.getElementById("load-more"),
   cookieModal: document.getElementById("cookie-modal"),
   cookieInput: document.getElementById("cookie-input"),
   cookieSave: document.getElementById("cookie-save"),
@@ -28,56 +33,61 @@ function fmtPrice(item) {
   return item.currency ? `${amount} ${item.currency}` : amount;
 }
 
+function buildCard(item) {
+  const card = document.createElement("article");
+  card.className = "card";
+
+  const check = document.createElement("input");
+  check.type = "checkbox";
+  check.className = "card-check";
+  check.checked = state.selected.has(item.id);
+  check.addEventListener("change", () => {
+    if (check.checked) state.selected.add(item.id);
+    else state.selected.delete(item.id);
+    updateExport();
+  });
+
+  const img = document.createElement("img");
+  img.className = "card-img";
+  img.loading = "lazy";
+  if (item.photo_url) img.src = item.photo_url;
+  img.alt = item.title || "";
+  img.style.visibility = item.photo_url ? "visible" : "hidden";
+
+  const body = document.createElement("div");
+  body.className = "card-body";
+
+  const title = document.createElement("a");
+  title.className = "card-title";
+  title.href = item.url || "#";
+  title.target = "_blank";
+  title.rel = "noopener";
+  title.textContent = item.title || `Item ${item.id}`;
+
+  const price = document.createElement("div");
+  price.className = "card-price";
+  price.textContent = fmtPrice(item);
+
+  const meta = document.createElement("div");
+  meta.className = "card-meta";
+  meta.textContent = [item.brand, item.size, item.condition]
+    .filter(Boolean)
+    .join(" · ");
+
+  body.append(title, price, meta);
+  card.append(check, img, body);
+  return card;
+}
+
 function renderCards() {
   els.itemsGrid.innerHTML = "";
   for (const item of state.items) {
-    const card = document.createElement("article");
-    card.className = "card";
-
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.className = "card-check";
-    check.checked = state.selected.has(item.id);
-    check.addEventListener("change", () => {
-      if (check.checked) state.selected.add(item.id);
-      else state.selected.delete(item.id);
-      updateExport();
-    });
-
-    const img = document.createElement("img");
-    img.className = "card-img";
-    img.loading = "lazy";
-    if (item.photo_url) img.src = item.photo_url;
-    img.alt = item.title || "";
-    img.style.visibility = item.photo_url ? "visible" : "hidden";
-
-    const body = document.createElement("div");
-    body.className = "card-body";
-
-    const title = document.createElement("a");
-    title.className = "card-title";
-    title.href = item.url || "#";
-    title.target = "_blank";
-    title.rel = "noopener";
-    title.textContent = item.title || `Item ${item.id}`;
-
-    const price = document.createElement("div");
-    price.className = "card-price";
-    price.textContent = fmtPrice(item);
-
-    const meta = document.createElement("div");
-    meta.className = "card-meta";
-    meta.textContent = [item.brand, item.size, item.condition]
-      .filter(Boolean)
-      .join(" · ");
-
-    body.append(title, price, meta);
-    card.append(check, img, body);
-    els.itemsGrid.appendChild(card);
+    els.itemsGrid.appendChild(buildCard(item));
   }
   els.status.textContent = state.items.length
     ? `${state.items.length} results`
     : "";
+  els.loadMoreBtn.hidden = !state.hasMore;
 }
 
 function updateExport() {
@@ -86,11 +96,7 @@ function updateExport() {
   els.exportBtn.disabled = n === 0;
 }
 
-function showCookieModal() {
-  els.cookieModal.hidden = false;
-}
-
-async function search() {
+function buildParams() {
   const params = new URLSearchParams();
   if (els.searchInput.value) params.set("q", els.searchInput.value);
   if (els.brandSelect.value) params.set("brand", els.brandSelect.value);
@@ -99,17 +105,48 @@ async function search() {
   if (els.conditionSelect.value)
     params.set("condition", els.conditionSelect.value);
   params.set("order", els.orderSelect.value);
+  params.set("per_page", String(PER_PAGE));
+  return params;
+}
 
+function showCookieModal() {
+  els.cookieModal.hidden = false;
+}
+
+async function search() {
+  const params = buildParams();
+  params.set("page", "1");
   try {
     const res = await fetch("/api/search?" + params.toString());
     if (!res.ok) throw new Error(`search failed (${res.status})`);
     state.items = await res.json();
+    state.page = 1;
+    state.hasMore = state.items.length === PER_PAGE;
     state.selected.clear();
     renderCards();
     updateExport();
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
     showCookieModal();
+  }
+}
+
+async function loadMore() {
+  const params = buildParams();
+  params.set("page", String(state.page + 1));
+  els.loadMoreBtn.disabled = true;
+  try {
+    const res = await fetch("/api/search?" + params.toString());
+    if (!res.ok) throw new Error(`search failed (${res.status})`);
+    const more = await res.json();
+    state.items = state.items.concat(more);
+    state.page += 1;
+    state.hasMore = more.length === PER_PAGE;
+    renderCards();
+  } catch (err) {
+    els.status.textContent = "Search failed. " + err.message;
+  } finally {
+    els.loadMoreBtn.disabled = false;
   }
 }
 
@@ -170,6 +207,7 @@ els.searchBtn.addEventListener("click", search);
 els.searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") search();
 });
+els.loadMoreBtn.addEventListener("click", loadMore);
 els.exportBtn.addEventListener("click", exportPdf);
 els.cookieSave.addEventListener("click", saveCookie);
 els.cookieClose.addEventListener("click", () => {

@@ -1,5 +1,6 @@
 """FastAPI app serving the Vinted price research UI and JSON/PDF endpoints."""
 
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -9,7 +10,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from constants import ORDER_RELEVANCE
+from constants import DEFAULT_BASE_URL, DEFAULT_PER_PAGE, ORDER_RELEVANCE
 from models import ItemDTO
 from pdf import build_pdf
 from session_store import SessionStore
@@ -20,6 +21,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 app = FastAPI(title="Vinted Price Research")
 _store = SessionStore()
 _client: VintedClient | None = None
+BASE_URL = os.environ.get("VINTED_BASE_URL", DEFAULT_BASE_URL)
 
 
 def _ensure_client() -> VintedClient:
@@ -27,7 +29,11 @@ def _ensure_client() -> VintedClient:
     global _client
     if _client is None:
         cookie = _store.load()
-        _client = VintedClient(cookie=cookie) if cookie else VintedClient()
+        _client = (
+            VintedClient(baseurl=BASE_URL, cookie=cookie)
+            if cookie
+            else VintedClient(baseurl=BASE_URL)
+        )
     return _client
 
 
@@ -52,6 +58,8 @@ def search(
     price_max: float | None = None,
     condition: str | None = None,
     order: str = ORDER_RELEVANCE,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
 ):
     brand_id = None
     if brand:
@@ -66,6 +74,8 @@ def search(
         price_max=price_max,
         condition=condition,
         order=order,
+        page=page,
+        per_page=per_page,
     )
     return [asdict(i) for i in items]
 
@@ -82,7 +92,7 @@ def save_session(payload: SessionPayload):
         raise HTTPException(status_code=400, detail="cookie must not be empty")
     _store.save(cookie)
     global _client
-    _client = VintedClient(cookie=cookie)
+    _client = VintedClient(baseurl=BASE_URL, cookie=cookie)
     return {"ok": True}
 
 

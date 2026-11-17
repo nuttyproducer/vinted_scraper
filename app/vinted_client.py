@@ -56,8 +56,9 @@ class VintedClient:
         condition: str | None = None,
         order: str = ORDER_RELEVANCE,
         per_page: int = DEFAULT_PER_PAGE,
+        page: int = 1,
     ) -> list[ItemDTO]:
-        params: dict = {"order": order, "per_page": per_page, "page": 1}
+        params: dict = {"order": order, "per_page": per_page, "page": page}
         if query:
             params["search_text"] = query
         if brand_id is not None:
