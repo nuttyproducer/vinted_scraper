@@ -3,10 +3,12 @@
 const PER_PAGE = 96;
 
 const state = {
-  items: [], // full item DTOs from the current search
+  items: [], // all loaded item DTOs from the current search
   selected: new Set(), // selected item ids
   page: 1,
   hasMore: false,
+  renderedCount: 0,
+  brandFilter: "", // client-side brand filter ("" = all)
 };
 
 const els = {
@@ -81,15 +83,51 @@ function buildCard(item) {
   return card;
 }
 
-function renderCards() {
-  els.itemsGrid.innerHTML = "";
-  for (const item of state.items) {
-    els.itemsGrid.appendChild(buildCard(item));
+function getVisibleItems() {
+  if (!state.brandFilter) return state.items;
+  return state.items.filter((i) => i.brand === state.brandFilter);
+}
+
+function renderCards(reset) {
+  if (reset) {
+    els.itemsGrid.innerHTML = "";
+    state.renderedCount = 0;
   }
-  els.status.textContent = state.items.length
-    ? `${state.items.length} results`
-    : "";
+  for (let i = state.renderedCount; i < state.items.length; i++) {
+    const item = state.items[i];
+    if (!state.brandFilter || item.brand === state.brandFilter) {
+      els.itemsGrid.appendChild(buildCard(item));
+    }
+  }
+  state.renderedCount = state.items.length;
+  els.status.textContent = `${getVisibleItems().length} results`;
   els.loadMoreBtn.hidden = !state.hasMore;
+}
+
+function updateBrandOptions() {
+  const current = state.brandFilter;
+  const brands = [];
+  const seen = new Set();
+  for (const item of state.items) {
+    if (item.brand && !seen.has(item.brand)) {
+      seen.add(item.brand);
+      brands.push(item.brand);
+    }
+  }
+  brands.sort();
+  els.brandSelect.innerHTML = '<option value="">All brands</option>';
+  for (const b of brands) {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = b;
+    els.brandSelect.appendChild(opt);
+  }
+  if (brands.includes(current)) {
+    els.brandSelect.value = current;
+  } else {
+    els.brandSelect.value = "";
+    state.brandFilter = "";
+  }
 }
 
 function updateExport() {
@@ -108,7 +146,6 @@ function getSelectedMarkets() {
 function buildParams() {
   const params = new URLSearchParams();
   if (els.searchInput.value) params.set("q", els.searchInput.value);
-  if (els.brandSelect.value) params.set("brand", els.brandSelect.value);
   if (els.priceMin.value) params.set("price_min", els.priceMin.value);
   if (els.priceMax.value) params.set("price_max", els.priceMax.value);
   if (els.conditionSelect.value)
@@ -134,8 +171,10 @@ async function search() {
     state.items = data.items;
     state.page = 1;
     state.hasMore = data.has_more;
+    state.brandFilter = "";
     state.selected.clear();
-    renderCards();
+    updateBrandOptions();
+    renderCards(true);
     updateExport();
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
@@ -154,27 +193,12 @@ async function loadMore() {
     state.items = state.items.concat(data.items);
     state.page += 1;
     state.hasMore = data.has_more;
+    updateBrandOptions();
     renderCards();
   } catch (err) {
     els.status.textContent = "Search failed. " + err.message;
   } finally {
     els.loadMoreBtn.disabled = false;
-  }
-}
-
-async function loadBrands() {
-  try {
-    const res = await fetch("/api/brands");
-    if (!res.ok) return;
-    const brands = await res.json();
-    for (const b of brands) {
-      const opt = document.createElement("option");
-      opt.value = b.id;
-      opt.textContent = b.title;
-      els.brandSelect.appendChild(opt);
-    }
-  } catch (e) {
-    // brand list is optional; search still works without it
   }
 }
 
@@ -219,9 +243,19 @@ els.searchBtn.addEventListener("click", search);
 els.searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") search();
 });
+els.brandSelect.addEventListener("change", () => {
+  state.brandFilter = els.brandSelect.value;
+  renderCards(true);
+});
+els.conditionSelect.addEventListener("change", search);
+els.orderSelect.addEventListener("change", search);
+els.priceMin.addEventListener("change", search);
+els.priceMax.addEventListener("change", search);
 els.marketsAll.addEventListener("change", () => {
   els.marketChecks.forEach((c) => (c.checked = els.marketsAll.checked));
+  search();
 });
+els.marketChecks.forEach((c) => c.addEventListener("change", search));
 els.loadMoreBtn.addEventListener("click", loadMore);
 els.exportBtn.addEventListener("click", exportPdf);
 els.cookieSave.addEventListener("click", saveCookie);
@@ -229,5 +263,4 @@ els.cookieClose.addEventListener("click", () => {
   els.cookieModal.hidden = true;
 });
 
-loadBrands();
 updateExport();
