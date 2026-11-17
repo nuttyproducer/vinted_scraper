@@ -1,7 +1,7 @@
 """Constants for the Vinted price research app."""
 
 COOKIE_NAME = "access_token_web"
-DEFAULT_BASE_URL = "https://www.vinted.com"
+DEFAULT_BASE_URL = "https://www.vinted.be"
 DEFAULT_PER_PAGE = 96
 BRANDS_ENDPOINT = "/api/v2/brands"
 

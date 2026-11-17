@@ -3,6 +3,7 @@ import unittest
 from constants import (
     BRANDS_ENDPOINT,
     CONDITION_IDS,
+    DEFAULT_BASE_URL,
     DEFAULT_PER_PAGE,
     ORDER_NEWEST,
     ORDER_PRICE_ASC,
@@ -19,6 +20,7 @@ class TestConstants(unittest.TestCase):
         self.assertEqual(ORDER_NEWEST, "newest_first")
         self.assertEqual(ORDER_RELEVANCE, "relevance")
         self.assertEqual(DEFAULT_PER_PAGE, 96)
+        self.assertEqual(DEFAULT_BASE_URL, "https://www.vinted.be")
         self.assertEqual(CONDITION_IDS["new_with_tags"], 6)
         self.assertEqual(CONDITION_IDS["new_without_tags"], 1)
         self.assertEqual(CONDITION_IDS["very_good"], 2)
